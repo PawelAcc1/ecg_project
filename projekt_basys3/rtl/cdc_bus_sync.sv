@@ -38,7 +38,7 @@ end
 // 2. ZEGAR DOCELOWY (clk_out): Podwójny synchronizator + Detekcja zbocza
 //#######################################################################
 
-logic sync_1, sync_2, sync_3;
+(* ASYNC_REG = "TRUE" *) logic sync_1, sync_2, sync_3;
 
 always_ff @(posedge clk_out, negedge rst_n) begin
     if(!rst_n) begin

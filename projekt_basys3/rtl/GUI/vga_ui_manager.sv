@@ -59,15 +59,39 @@ module vga_ui_manager (
         .days(rtc_days), .months(rtc_months)
     );
 
+    // --- CDC RTC DATA PROTECTION FOR ALARM LOGGER ---
+    wire [25:0] time_bus_65mhz = {rtc_hours, rtc_minutes, rtc_seconds, rtc_days, rtc_months};
+    wire [25:0] time_bus_100mhz;
+    wire time_updated_100mhz;
+
+    cdc_bus_sync #(
+        .DATA_WIDTH(26)
+    ) u_cdc_rtc_logger (
+        .clk_in(clk_65MHz),     
+        .rst_n(rst_n),
+        .data_in(time_bus_65mhz),
+        .valid_in(time_updated),
+    
+        .clk_out(clk_100MHz),
+        .data_out(time_bus_100mhz),
+        .valid_out(time_updated_100mhz)
+    );
+
+    wire [4:0] safe_log_hours   = time_bus_100mhz[25:21];
+    wire [5:0] safe_log_minutes = time_bus_100mhz[20:15];
+    wire [5:0] safe_log_seconds = time_bus_100mhz[14:9];
+    wire [4:0] safe_log_days    = time_bus_100mhz[8:4];
+    wire [3:0] safe_log_months  = time_bus_100mhz[3:0];
+
     // --- HISTORIA ---
     logic history_pixel;
     alarm_logger u_logger (
         .clk_100MHz(clk_100MHz), 
         .clk_65MHz(clk_65MHz), 
         .rst_n(rst_n),
-        .rtc_hours(rtc_hours), 
-        .rtc_minutes(rtc_minutes),
-        .rtc_seconds(rtc_seconds), 
+        .rtc_hours(safe_log_hours), 
+        .rtc_minutes(safe_log_minutes),
+        .rtc_seconds(safe_log_seconds), 
         .current_bpm(current_bpm), 
         .current_bpm_instant(current_bpm_instant),
         .bpm_instant_valid(bpm_instant_valid),

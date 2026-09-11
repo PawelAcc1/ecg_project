@@ -7,13 +7,12 @@ module cdc_bus_sync #(
 )(
     // --- Domena zegara źródłowego ---
     input logic clk_in,
-    input logic rst_in_n,
+    input logic rst_n,
     input logic [DATA_WIDTH-1:0] data_in,
     input logic valid_in,
 
     // --- Domena zegara docelowego ---
     input logic clk_out,
-    input logic rst_out_n,
     output logic [DATA_WIDTH-1:0] data_out,
     output logic valid_out
 );
@@ -24,8 +23,8 @@ module cdc_bus_sync #(
 
 logic toggle_in;
 
-always_ff @(posedge clk_in, negedge rst_in) begin
-    if(!rst_in_n) begin
+always_ff @(posedge clk_in, negedge rst_n) begin
+    if(!rst_n) begin
         toggle_in <= '0;
     end
     else begin
@@ -39,10 +38,10 @@ end
 // 2. ZEGAR DOCELOWY (clk_out): Podwójny synchronizator + Detekcja zbocza
 //#######################################################################
 
-logic sync_1, sync_2, sync3;
+logic sync_1, sync_2, sync_3;
 
-always_ff @(posedge clk_out, negedge rst_out_n) begin
-    if(!rst_out_n) begin
+always_ff @(posedge clk_out, negedge rst_n) begin
+    if(!rst_n) begin
         sync_1 <= '0;
         sync_2 <= '0;
         sync_3 <= '0;
@@ -59,8 +58,8 @@ assign valid_out = sync_2 ^ sync_3;
 //##############################################################
 // 3. ZEGAR DOCELOWY (clk_out): Zatrzaśnięcie danych
 //##############################################################
-always_ff @(posedge clk_out, negedge rst_out_n) begin
-    if(!rst_out_n) begin
+always_ff @(posedge clk_out, negedge rst_n) begin
+    if(!rst_n) begin
         data_out <= '0;
     end
     else begin

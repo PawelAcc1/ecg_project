@@ -14,7 +14,9 @@ module rtc_clock (
     output logic [5:0] minutes,
     output logic [5:0] seconds,
     output logic [4:0] days,
-    output logic [3:0] months
+    output logic [3:0] months,
+
+    output logic time_updated
 );
 
     // --- Prosty detektor zbocza dla kliknięcia w przycisk "Zapisz czas" ---
@@ -74,4 +76,6 @@ module rtc_clock (
             end else seconds <= seconds + 1'b1;
         end
     end
+
+    assign time_updated = one_second_tick | set_time_pulse;
 endmodule

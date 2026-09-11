@@ -302,4 +302,4 @@ set_property CFGBVS VCCO [current_design]
 
 
 # --- Ignorowanie opóźnień między różnymi domenami zegarowymi (CDC) ---
-set_clock_groups -asynchronous -group [get_clocks clk65MHz_clk_wiz_0] -group [get_clocks clk100MHz_clk_wiz_0]
+#set_clock_groups -asynchronous -group [get_clocks clk65MHz_clk_wiz_0] -group [get_clocks clk100MHz_clk_wiz_0]

@@ -64,6 +64,7 @@ set sv_files {
     ../rtl/recorder/recording_memory.sv
     ../rtl/recorder/hex_to_ascii.sv
     ../rtl/recorder/tick_generator.sv
+    ../rtl/cdc_bus_sync.sv
     rtl/top_ecg_basys3.sv
 }
 

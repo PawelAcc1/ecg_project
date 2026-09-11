@@ -421,30 +421,29 @@ module top_ecg #(
         .read_address(read_address)
     );
 
-    // ... poprzedni kod render_signal ...
-
     // Odbiór danych z kontrolera myszy PS/2
     wire [11:0] mouse_x_pos;
     wire [11:0] mouse_y_pos;
     wire mouse_left_click;
+    wire mouse_new_event;
 
     MouseCtl u_mouse_ctl (
         .clk(clk_100MHz),       // Zegar 100MHz dla PS/2
-        .rst(~rst_n),           // Uwaga: MouseCtl wymaga resetu w stanie wysokim
+        .rst(~rst_n),          
         .xpos(mouse_x_pos),
         .ypos(mouse_y_pos),
         .zpos(),
         .left(mouse_left_click),
         .middle(),
         .right(),
-        .new_event(),
+        .new_event(mouse_new_event),
         .value(12'b0),
         .setx(1'b0),
         .sety(1'b0),
         .setmax_x(1'b0),
         .setmax_y(1'b0),
-        .ps2_clk(ps2_clk),      // Dodaj ps2_clk do portów we/wy na górze top_ecg!
-        .ps2_data(ps2_data)     // Dodaj ps2_data do portów we/wy na górze top_ecg!
+        .ps2_clk(ps2_clk),      
+        .ps2_data(ps2_data)    
     );
 
 /*
@@ -601,18 +600,77 @@ module top_ecg #(
         .stemi_alarm      (stemi_alarm_raw)
     );
 
+    /* 
+     * CDC: 100 MHz -> 65 MHz
+    */ 
+   
+    //MOUSE
+    wire [24:0] mouse_bus_100mhz = {mouse_left_click, mouse_y_pos, mouse_x_pos};
+    wire [24:0] mouse_bus_65mhz;
+    wire mouse_safe_valid;
+
+    cdc_bus_sync #(
+        .DATA_WIDTH(25)
+    ) u_cdc_mouse (
+        .clk_in(clk_100MHz),
+        .rst_n(rst_n),
+        .data_in(mouse_bus_100mhz),
+        .valid_in(mouse_new_event),
+
+        .clk_out(clk_65MHz),
+        .data_out(mouse_bus_65mhz),
+        .valid_out(mouse_safe_valid)
+    );
+
+    wire        safe_mouse_left = mouse_bus_65mhz[24];
+    wire [11:0] safe_mouse_y    = mouse_bus_65mhz[23:12];
+    wire [11:0] safe_mouse_x    = mouse_bus_65mhz[11:0];
+
+    //BPM
+    wire [7:0] safe_bpm;
+    wire safe_bpm_valid;
+
+    cdc_bus_sync #(
+        .DATA_WIDTH(8)
+    ) u_cdc_bpm (
+        .clk_in(clk_100MHz), 
+        .rst_n(rst_n),
+        .data_in(current_bpm),
+        .valid_in(bpm_valid), 
+        
+        .clk_out(clk_65MHz),
+        .data_out(safe_bpm),
+        .valid_out(safe_bpm_valid)
+    );
+
+    wire [7:0] safe_bpm_instant;
+    wire safe_bpm_instant_valid;
+
+    cdc_bus_sync #(
+        .DATA_WIDTH(8)
+    ) u_cdc_bpm_instant(
+        .clk_in(clk_100MHz), 
+        .rst_n(rst_n),
+        .data_in(current_bpm_instant),
+        .valid_in(bpm_instant_updated), 
+        
+        .clk_out(clk_65MHz),
+        .data_out(safe_bpm_instant),
+        .valid_out(safe_bpm_instant_valid)
+    );
+
     vga_ui_manager u_vga_ui (
         .clk_65MHz(clk_65MHz),      
         .clk_100MHz(clk_100MHz),    
         .rst_n(rst_n),
-        .current_bpm(current_bpm),
-        .bpm_valid(bpm_updated),
-        .current_bpm_instant(current_bpm_instant),
-        .bpm_instant_valid(bpm_instant_updated),
+        .current_bpm(safe_bpm),
+        .bpm_valid(safe_bpm_valid),
+        .current_bpm_instant(safe_bpm_instant),
+        .bpm_instant_valid(safe_bpm_instant_valid),
         .leads_off(effective_leads_off),
-        .mouse_x(mouse_x_pos),
-        .mouse_y(mouse_y_pos),
-        .mouse_left(mouse_left_click),
+        .mouse_x(safe_mouse_x),
+        .mouse_y(safe_mouse_y),
+        .mouse_left(safe_mouse_left),
         .stemi_alarm(stemi_alarm),
         .vga_in(if_render),          
         .vga_out(if_ui)              
@@ -622,8 +680,8 @@ module top_ecg #(
     draw_mouse u_mouse_cursor (
         .clk(clk_65MHz),
         .rst_n(rst_n),
-        .x_start(mouse_x_pos),
-        .y_start(mouse_y_pos),
+        .x_start(safe_mouse_x),
+        .y_start(safe_mouse_y),
         .vga_in(if_ui),       // Pobiera gotowy obraz z okienkami
         .vga_out(if_mouse)    // Wyrzuca ostateczny obraz z nałożonym kursorem na monitor
     );

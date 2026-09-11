@@ -51,7 +51,7 @@ module vga_ui_manager (
     logic [4:0] rtc_days;  logic [3:0] rtc_months;
 
     rtc_clock u_clock (
-        .clk_100MHz(clk_100MHz), .rst_n(rst_n),
+        .clk_65MHz(clk_65MHz), .rst_n(rst_n),
         .set_time_trigger(do_set_time),
         .set_hour(setup_hour), .set_min(setup_min),
         .set_day(setup_day),   .set_mon(setup_mon),
@@ -84,13 +84,6 @@ module vga_ui_manager (
     // --- SYNCHRONIZACJA SYGNAŁÓW DLA DOMENY WIDEO (CDC 100MHz -> 65MHz) ---
     logic [7:0] current_bpm_sync;
 
-    // Zmienne zsynchronizowane dla RTC (Zegara)
-    logic [4:0] rtc_hours_sync; 
-    logic [5:0] rtc_minutes_sync; 
-    logic [5:0] rtc_seconds_sync;
-    logic [4:0] rtc_days_sync;  
-    logic [3:0] rtc_months_sync;
-
     // Zmienne zsynchronizowane dla Myszki do obsługi UI
     logic [11:0] mouse_x_sync;
     logic [11:0] mouse_y_sync;
@@ -101,21 +94,11 @@ module vga_ui_manager (
         if (!rst_n) begin
             current_bpm_sync <= 8'd0;
             
-            rtc_hours_sync <= 5'd0; rtc_minutes_sync <= 6'd0; rtc_seconds_sync <= 6'd0;
-            rtc_days_sync <= 5'd0; rtc_months_sync <= 4'd0;
-            
             mouse_x_sync <= 12'd0; mouse_y_sync <= 12'd0;
             mouse_left_sync1 <= 1'b0; mouse_left_sync2 <= 1'b0;
         end else begin
             // Łapiemy BPM
             current_bpm_sync <= current_bpm;
-            
-            // Łapiemy czas z modułu rtc_clock (100 MHz)
-            rtc_hours_sync   <= rtc_hours;
-            rtc_minutes_sync <= rtc_minutes;
-            rtc_seconds_sync <= rtc_seconds;
-            rtc_days_sync    <= rtc_days;
-            rtc_months_sync  <= rtc_months;
             
             // Łapiemy myszkę (X, Y oraz kliknięcie)
             mouse_x_sync <= mouse_x;
@@ -187,11 +170,11 @@ module vga_ui_manager (
     logic [7:0] t_h1, t_h2, t_m1, t_m2, t_s1, t_s2, t_d1, t_d2, t_mo1, t_mo2;
     logic [119:0] top_clock_str; // 15 znaków
     
-    assign t_h1 = (rtc_hours_sync / 10) + 8'h30;   assign t_h2 = (rtc_hours_sync % 10) + 8'h30;
-    assign t_m1 = (rtc_minutes_sync / 10) + 8'h30; assign t_m2 = (rtc_minutes_sync % 10) + 8'h30;
-    assign t_s1 = (rtc_seconds_sync / 10) + 8'h30; assign t_s2 = (rtc_seconds_sync % 10) + 8'h30;
-    assign t_d1 = (rtc_days_sync / 10) + 8'h30;    assign t_d2 = (rtc_days_sync % 10) + 8'h30;
-    assign t_mo1 = (rtc_months_sync / 10) + 8'h30; assign t_mo2 = (rtc_months_sync % 10) + 8'h30;
+    assign t_h1 = (rtc_hours / 10) + 8'h30;   assign t_h2 = (rtc_hours % 10) + 8'h30;
+    assign t_m1 = (rtc_minutes / 10) + 8'h30; assign t_m2 = (rtc_minutes % 10) + 8'h30;
+    assign t_s1 = (rtc_seconds / 10) + 8'h30; assign t_s2 = (rtc_seconds % 10) + 8'h30;
+    assign t_d1 = (rtc_days / 10) + 8'h30;    assign t_d2 = (rtc_days % 10) + 8'h30;
+    assign t_mo1 = (rtc_months / 10) + 8'h30; assign t_mo2 = (rtc_months % 10) + 8'h30;
 
     // Format: "HH:MM:SS  DD.MM"
     assign top_clock_str = {t_h1, t_h2, 8'h3A, t_m1, t_m2, 8'h3A, t_s1, t_s2, 8'h20, 8'h20, t_d1, t_d2, 8'h2E, t_mo1, t_mo2};

@@ -1,7 +1,6 @@
 `timescale 1ns / 1ps
 
 module alarm_logger (
-    input  logic clk_100MHz,
     input  logic clk_65MHz,
     input  logic rst_n,
 
@@ -23,10 +22,20 @@ module alarm_logger (
     
     output logic pixel_on
 );
+    // --- STEMI SYNC ---
+    (* ASYNC_REG = "TRUE" *) logic stemi_sync_1, stemi_sync_2;
+    always_ff @(posedge clk_65MHz or negedge rst_n) begin
+        if (!rst_n) begin
+            stemi_sync_1 <= 1'b0; stemi_sync_2 <= 1'b0;
+        end else begin
+            stemi_sync_1 <= stemi_alarm;
+            stemi_sync_2 <= stemi_sync_1;
+        end
+    end
 
     // --- 1. SYNCHRONIZATOR SYGNAŁÓW ZEWNĘTRZNYCH ---
     logic [1:0] leads_sync_1, leads_sync_2;
-    always_ff @(posedge clk_100MHz or negedge rst_n) begin
+    always_ff @(posedge clk_65MHz or negedge rst_n) begin
         if (!rst_n) begin
             leads_sync_1 <= 2'b00;
             leads_sync_2 <= 2'b00;
@@ -52,7 +61,7 @@ module alarm_logger (
     assign is_brady_c      = (leads_connected && !suppress_rhythm_alarms && current_bpm > 0 && current_bpm < 8'd50);
     assign is_tachy_c      = (leads_connected && !suppress_rhythm_alarms && current_bpm > 8'd100);
     assign is_arrhythmia_c = (leads_connected && !suppress_rhythm_alarms && bpm_instant_valid && current_bpm_instant != 0 && prev_bpm_instant != 0 && bpm_instant_diff > 8'd15);
-    assign is_stemi_c      = (leads_connected && stemi_alarm);
+    assign is_stemi_c = (leads_connected && stemi_sync_2);
 
     logic [2:0] alarm_code_comb; // 0=OK, 1=BRADY, 2=TACHY, 3=ARYTMIA, 4=STEMI
     assign alarm_code_comb = is_stemi_c      ? 3'd4 : 
@@ -67,7 +76,7 @@ module alarm_logger (
     // Zatrzaskujemy flagi alarmów do pamięci, aby układ zdążył wygenerować stringa
     logic is_brady_reg, is_tachy_reg, is_arrhythmia_reg, is_stemi_reg;
     
-    always_ff @(posedge clk_100MHz or negedge rst_n) begin
+    always_ff @(posedge clk_65MHz or negedge rst_n) begin
         if (!rst_n) begin
             prev_bpm_instant <= 8'd0;
             current_alarm <= 3'd0;
@@ -122,7 +131,7 @@ module alarm_logger (
     logic [199:0] log_strings_mem [0:7]; 
     logic [3:0] num_logs;
 
-    always_ff @(posedge clk_100MHz or negedge rst_n) begin
+    always_ff @(posedge clk_65MHz or negedge rst_n) begin
         if (!rst_n) begin
             num_logs <= 4'd0;
             for (int i=0; i<8; i++) log_strings_mem[i] <= 200'd0;
@@ -134,26 +143,6 @@ module alarm_logger (
                                    8'h20, 8'h20, b1, b2, b3, 8'h20, str_type};
             
             if (num_logs < 4'd8) num_logs <= num_logs + 1'b1;
-        end
-    end
-
-    // =========================================================================
-    // 5.5 SYNCHRONIZATOR DOMENY WIDEO (CDC: 100 MHz -> 65 MHz)
-    // Zabezpieczamy pamięć logów przed uderzeniem w niestabilną sieć VGA
-    // =========================================================================
-    logic [199:0] log_strings_vga_sync [0:7]; 
-    logic [3:0]   num_logs_vga_sync;
-    
-    always_ff @(posedge clk_65MHz or negedge rst_n) begin
-        if (!rst_n) begin
-            num_logs_vga_sync <= 4'd0;
-            for (int i=0; i<8; i++) log_strings_vga_sync[i] <= 200'd0;
-        end else begin
-            // UWAGA: To jest transfer wielobitowy (Bus CDC). 
-            // Ponieważ logi dla oka zmieniają się ekstremalnie rzadko, 
-            // można bezpiecznie użyć pojedynczego rejestru w nowym zegarze.
-            num_logs_vga_sync <= num_logs;
-            for (int i=0; i<8; i++) log_strings_vga_sync[i] <= log_strings_mem[i];
         end
     end
 
@@ -171,15 +160,13 @@ module alarm_logger (
                         (show_monitor && k < 2) ? (12'd590 + k * 12'd50) :    
                         12'd0;
             
-            // Zmiana na zsynchronizowaną zmienną!
-            assign ren = (k < num_logs_vga_sync) && (show_history || (show_monitor && k < 2));
+            assign ren = (k < num_logs) && (show_history || (show_monitor && k < 2));
 
             vga_text_renderer #(.MAX_CHARS(25), .CHAR_SCALE(2)) txt_log (
                 .clk(clk_65MHz),
                 .hcount(hcount), .vcount(vcount),
                 .pos_x(rx), .pos_y(ry),
-                // Zmiana na zsynchronizowaną zmienną!
-                .char_string(log_strings_vga_sync[k]),
+                .char_string(log_strings_mem[k]),
                 .string_len(ren ? 5'd25 : 5'd0), 
                 .pixel_on(row_pixels[k])
             );

@@ -300,6 +300,6 @@ set_property PACKAGE_PIN B17 [get_ports PS2Data]
 set_property CONFIG_VOLTAGE 3.3 [current_design]
 set_property CFGBVS VCCO [current_design]
 
-
-# --- Ignorowanie opóźnień między różnymi domenami zegarowymi (CDC) ---
-#set_clock_groups -asynchronous -group [get_clocks clk65MHz_clk_wiz_0] -group [get_clocks clk100MHz_clk_wiz_0]
+# --- Wyłączenie analizy czasowej (CDC) TYLKO dla jednobitowych sygnałów ---
+set_false_path -from [get_cells -hierarchical *toggle_in_reg] -to [get_cells -hierarchical *sync_1_reg]
+set_false_path -to [get_cells -hierarchical *stemi_sync_1_reg*]

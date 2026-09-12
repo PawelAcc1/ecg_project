@@ -2,7 +2,6 @@
 
 module vga_ui_manager (
     input  logic clk_65MHz,
-    input  logic clk_100MHz,
     input  logic rst_n,
     
     input  logic [7:0] current_bpm,

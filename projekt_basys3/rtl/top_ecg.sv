@@ -1,10 +1,5 @@
 module top_ecg #(
-        // 200_000 @ 100 MHz => 500 Hz (plytka). W symulacji TB nadpisuje mniejsza wartoscia
-        // (>= liczba odczepow najdluzszego FIR, ~301).
-        parameter int TICK_GEN_DIV = 200_000,
-        // Zachowany tylko dla kompatybilnosci ze starszym testbenchem.
-        // Tor sprzetowy zawsze idzie przez FIR IP.
-        parameter bit FAST_PATHOLOGY_SIM = 0
+        parameter int TICK_GEN_DIV = 200_000
     )(
         input  logic clk_100MHz,
         input  logic clk_65MHz,
@@ -660,8 +655,7 @@ module top_ecg #(
     );
 
     vga_ui_manager u_vga_ui (
-        .clk_65MHz(clk_65MHz),      
-        .clk_100MHz(clk_100MHz),    
+        .clk_65MHz(clk_65MHz),
         .rst_n(rst_n),
         .current_bpm(safe_bpm),
         .bpm_valid(safe_bpm_valid),
